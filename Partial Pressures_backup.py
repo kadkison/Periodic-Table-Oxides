@@ -5,7 +5,8 @@ Created on Fri Oct 13 14:52:51 2017
 @author: Kate
 """
 import re
-element="P"
+element="FE"
+xfilename=element+"-O-acro2=1e-9-all"
 filename=element+"-O-acro2=1e-9-pp.png"
 my_file=open(element+"-O-acro2=1e-9-gas-all.txt",'r')
 my_filep=open(element+"-O-acro2=1e-9-p-all.txt",'r') #opens txt file containing T and P data
@@ -168,6 +169,7 @@ pp={}
 for l in range(0,len(moles)):
     pp[str(l)]=moles_floats[str(l)]*Pressures
 
+Temperatures=[float(t) for t in Temperatures]
 Temperatures=np.array(Temperatures)    
 
 species_present=[]
@@ -184,3 +186,58 @@ for n in range(0,num_species):
     plt.savefig(filename)# bbox_inches='tight')
 
 print('Species:', species_present)
+
+
+
+#%%
+import xlsxwriter 
+
+workbook=xlsxwriter.Workbook(xfilename+'.xlsx')
+worksheet=workbook.add_worksheet()
+worksheet.write(0,0,"Temperature (K)")
+worksheet.write(0,2*num_species+4, "Number of Species")
+worksheet.write(1,2*num_species+4, num_species)
+row=1
+col=0
+
+for t in Temperatures:
+    worksheet.write(row,0, t)
+    row +=1
+
+row=1
+for p in Pressures:
+    worksheet.write(0,1, "Pressure (Pa)")
+    worksheet.write(row,1, p)
+    row +=1
+
+col=len(species_present)+3
+for name in species_present:
+    worksheet.write(0,col, 'PP'+name[7:])
+    col +=1
+
+col=2
+for name in species_present:
+    worksheet.write(0,col, name[6:])
+    col+=1
+    
+col=2
+row=1
+for key1 in moles_floats:
+    row=1
+    for m in moles_floats[key1]:
+        worksheet.write(row,col,m)
+        row +=1
+    col +=1
+
+col=len(species_present)+3
+row=1
+for key in pp:
+    row=1
+    
+    for val in pp[key]:
+        
+        worksheet.write(row,col,val)
+        row +=1
+    col +=1
+
+workbook.close()
