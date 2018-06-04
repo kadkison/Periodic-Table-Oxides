@@ -5,17 +5,28 @@ Created on Fri Oct 13 14:52:51 2017
 @author: Kate
 """
 import re
-element="FE"
-xfilename=element+"-O-acro2=1e-9-all"
-filename=element+"-O-acro2=1e-9-pp.png"
-my_file=open(element+"-O-acro2=1e-9-gas-all.txt",'r')
-my_filep=open(element+"-O-acro2=1e-9-p-all.txt",'r') #opens txt file containing T and P data
+PO2="$\mathregular{10^{-4}}$ Pa"
+start_temp='7.0000000000E+02'
+#end_temp='2900'
+element="TH-O" #enter 1 or 2 letter element in all CAPS
+xfilename=element+"-acro2=1e-9-all"
+ps=element+"-acro2=1e-9-pp.ps"
+pdf=element+"-acro2=1e-9-pp.pdf"
+png=element+"-acro2=1e-9-pp.png"
+my_file=open(element+"-acro2=1e-9-gas-all.txt",'r')
+my_filep=open(element+"-acro2=1e-9-p-all.txt",'r') #opens txt file containing T and P data
 textp=my_filep.read() #temp data comes separated by words. Goal is to make one contiguous list of temp from 700-1800 K containing only numerical data
+
 blocksp=re.split("PLOTTED COLUMNS ARE :", textp) #splits txt file after every instance of this string
 blocksp=blocksp[1:len(blocksp)] #discards first lines of text that are superfluous 
 
+source=re.split("1:", textp)
+source=re.split("CLIP ON", source[1])
+source=re.split("GAS",source[0])
+source=source[1][0:-1]
+
 tp_blocks=[];
-index_start=blocksp[0].find('7.0000000000E+02') #finds where the numbers start in the txt and marks as start index
+index_start=blocksp[0].find(start_temp) #finds where the numbers start in the txt and marks as start index
 index_end=blocksp[0].find('BLOCKEND') #finds where numbers end in txt and marks as end index
 tp_blocks.append(blocksp[0][index_start:index_end]) #adds the string, now containing only numbers to the tp_blocks list
 #print(index_start)
@@ -76,27 +87,13 @@ for b_line in range(0,len(blocks)):
 #        print(index_start)
         index_end=blocks[b_line].find('$')#each block ends with $. this marks last index
         ty_blocks.append(blocks[b_line][index_start:index_end]) #add cleaned txt of just numerical data to ty_blocks list
-        
-#ty_blocks=[]   #create a list of blocks just of numerical data of temperature and moles (y)
-#for b_line in range(0,len(blocks)):
-##    print(index)
-##    print(index.find('7.0000000000E+02'))
-#    if blocks[b_line].find('7.0000000000E+02') != -1: #if 700K is found in b_line, this is first numerical entry to keep
-#        index_start=blocks[b_line].find('7.0000000000E+02')#start index is where 700K appears
-#        index_end=blocks[b_line].find('$')#each block ends with $. this marks last index
-#        ty_blocks.append(blocks[b_line][index_start:index_end]) #add cleaned txt of just numerical data to ty_blocks list
-##        print((index-1)[index_end-36:index_end-20])
-#    else:
-#        index_start=blocks[b_line].find(blocks[b_line-1][index_end-38:index_end-20])#clean each block of txt in the list so it only contains numerical data
-#        index_end=blocks[b_line].find('$')
-#        ty_blocks.append(blocks[b_line][index_start:index_end])
 
 spec_dict={}
-for s in range(0,num_species):
+for s in range(0,num_species): #creates a dictionary to store the just the numeric part from the .txt format T (full range) and mole fraction for each species
     ordered_list=[]
     for m in range(0,int(len(ty_blocks)/num_species)):
         ordered_list.append(ty_blocks[s+m*num_species])
-    spec_dict[str(s)]=' '.join(ordered_list)
+    spec_dict[str(s)]=' '.join(ordered_list) #joins disjointed T,Y data together for each species
     
 temperatures_moles={}#dict of temperature data corresponding to each species
 moles={} #dict of moles (y) data for each species
@@ -118,44 +115,16 @@ for key in spec_dict:
     moles[key]=m_list #Y data for each species stored in corresponding dictionary key
 #at this point each species' temperatures and moles are cleaned down to numerical data but each species' data is not together, but in separate lists in ty_blocks
 
-#ty_split=[];#create lines of 1 T and 1Y each
-#for line in ty_blocks:
-#    ty_split.append(line.split('\n'))
-
-#species={}#create a dictionary containing each species as a key and its T, Y data
-#for k in range(0,num_species):
-#    multiplier=int(len(ty_blocks)/num_species)
-#    species[str(k)]=' '.join(ty_blocks[k*multiplier:(k+1)*multiplier]) #joins the group of blocks for each species together. #creates dict where the key '0' corresponds to first species, '1' to second species and so on
-#
-#temperatures_moles={}#dict of temperature data corresponding to each species
-#moles={} #dict of moles (y) data for each species
-#split_species={} #dict of species data all split into individual lines
-#for key in species:
-#    split_species[key] = species[key].split('\n') #splits the T,Y data for each species onto separate lines with 1 T and 1Y value each
-#    tm_list=[]
-#    m_list=[]
-#    for row in split_species[key]:
-##        print(row.split(' '))
-#        filtered_line = [val for val in row.split(' ') if val != '']#splits each line of numerical TY data into separate T and Y
-##        print(key)
-##        print(filtered_line)
-##        print(key, filtered_line)
-#        if filtered_line != []: #avoids error of calling index that doesn't exist in blank lines
-#            tm_list.append(filtered_line[0]) #creates a list of only Temperatures for each species
-#            m_list.append(filtered_line[1]) #creates a list of only moles Y for each species
-#    temperatures_moles[key]=tm_list #T data for each species stored in corresponding dictionary key
-#    moles[key]=m_list #Y data for each species stored in corresponding dictionary key
-
 #%% PLOTTING
 import matplotlib.pyplot as plt
 import numpy as np
-#pressures_floats=[]
-#for p in pressures:
-#    pressures_floats.append(float(p))
-Pressures = [float(p) for p in Pressures]
+from itertools import cycle
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+
+Pressures = [float(p) for p in Pressures] #converts strings in Pressures to floats
 Pressures=np.array(Pressures)
 
-moles_floats={}
+moles_floats={} #converts strings in moles to floats
 for key in moles:
 #    print(moles[key])
     moles_num=[]
@@ -167,31 +136,90 @@ for key in moles:
 
 pp={}
 for l in range(0,len(moles)):
-    pp[str(l)]=moles_floats[str(l)]*Pressures
+    pp[str(l)]=moles_floats[str(l)]*Pressures #calculates the partial pressure for each species and stores in dictionary
 
-Temperatures=[float(t) for t in Temperatures]
+ptot=[]
+for row in range(0,len(moles_num)): #calculates total pressure of all species at each temperature
+    temp_list=[]
+    for key in pp:
+        temp_list.append(pp[key][row])
+    ptot.append(sum(temp_list))
+    
+        
+Temperatures=[float(t) for t in Temperatures] #converts strings in Temperatures to floats
 Temperatures=np.array(Temperatures)    
 
 species_present=[]
 #if len(species_list)>num_species:
-for n in range(0,num_species):
-    plt.plot(temperatures_moles[str(n)], pp[str(n)],label=species_list[n])
-    species_present.append(species_list[n])
-    plt.legend(loc='best')
-    plt.yscale('log')
-    #plt.ylim(10^-34,10^4)
-    plt.xlabel('Temperature (K)')
-    plt.ylabel('Partial Pressure (Pa)')
-    plt.show()
-    plt.savefig(filename)# bbox_inches='tight')
 
-print('Species:', species_present)
+plt.close("all")
+plt.figure(figsize=(8, 10), dpi=100) #sets size of plot
+#plt.plot(Temperatures,ptot, color='k', linestyle='--',label='Ptot') #plots partial pressure vs temperature for each species of each element-oxide
+#plt.axhline(y=0.133, color='k', linestyle=':')
+#plt.text(start_temp,.2,'$\mathregular{10^{-3}}$ torr')
+
+
+num_plots = num_species
+
+# Have a look at the colormaps here and decide which one you'd like:
+# http://matplotlib.org/1.2.1/examples/pylab_examples/show_colormaps.html
+#colormap = plt.cm.plasma
+#plt.gca().set_color_cycle([colormap(i) for i in np.linspace(0, .9, num_plots)])
+#plt.gca().set_prop_cycle(plt.cycler('color', plt.cm.gist_ncar(np.linspace(0, .95, num_plots))))
+#linecycler=cycle(['-','-.'])
+#tab10, nipy_spectral, gist_ncar, tab20, Paired, jet
+position=species_list.index("T and Y(GAS,O2)") #finds the index of data that contains O2 data points so they can be ommitted during plotting
+
+if num_species>10:
+    for n in range(0,position):
+        plt.plot(temperatures_moles[str(n)], pp[str(n)],label=species_list[n][12:-1]+'_pp') #, next(linecycler)
+        species_present.append(species_list[n]) #makes a list of species present to use in legend
+    for n in range(position+1,11):
+        plt.plot(temperatures_moles[str(n)], pp[str(n)],label=species_list[n][12:-1]+'_pp') #, next(linecycler)
+        species_present.append(species_list[n]) #makes a list of species present to use in legend
+    for n in range(11,num_species):
+        plt.plot(temperatures_moles[str(n)], pp[str(n)],linestyle='-.',label=species_list[n][12:-1]+'_pp') #, next(linecycler)
+        species_present.append(species_list[n]) #makes a list of species present to use in legend
+else:
+    for n in range(0,position):
+        plt.plot(temperatures_moles[str(n)], pp[str(n)],label=species_list[n][12:-1]+'_pp') #, next(linecycler)
+        species_present.append(species_list[n]) #makes a list of species present to use in legend
+    for n in range(position+1,num_species):
+        plt.plot(temperatures_moles[str(n)], pp[str(n)],label=species_list[n][12:-1]+'_pp') #, next(linecycler)
+        species_present.append(species_list[n]) #makes a list of species present to use in legend
+       
+
+plt.ylim((1e-10,1e5))
+plt.gca().margins(x=0)
+#plt.xlim((float(start_temp),float(end_temp)))    
+legend=plt.legend(loc='upper left', bbox_to_anchor=(0.01, 0.93),title='Gas Species',  frameon=False,fontsize=16) #location 3 corresponds to lower left
+#legend.get_frame().set_edgecolor('k')
+plt.setp(legend.get_title(),fontsize=18)
+plt.yscale('log')   
+plt.xlabel('Temperature (K)',fontsize=18)
+plt.ylabel('Vapor Pressure (Pa)', fontsize=18)
+plt.title(source+' Source: Gas Species Partial Pressures', fontsize=18)
+textbox=plt.text(float(start_temp)+50,1.5e4, PO2 + " $O_2$", fontsize=18, color='black', bbox=dict(facecolor='white', edgecolor='k', alpha=.5))
+plt.tick_params(axis='both', labelsize=18)
+#minorLocator = MultipleLocator(5)
+#plt.axis.set_minor_locator(minorLocator)
+
+plt.tight_layout()
+
+
+plt.show()
+plt.savefig(pdf)# bbox_inches='tight')
+plt.savefig(ps) 
+plt.savefig(png)
+
+print('Species:', species_list)
 
 
 
 #%%
 import xlsxwriter 
 
+#writes to excel file the Temperature, Pressure, Mole fraction of each species, Partial Pressure of each species, total Pressure, number of species
 workbook=xlsxwriter.Workbook(xfilename+'.xlsx')
 worksheet=workbook.add_worksheet()
 worksheet.write(0,0,"Temperature (K)")
@@ -200,38 +228,38 @@ worksheet.write(1,2*num_species+4, num_species)
 row=1
 col=0
 
-for t in Temperatures:
+for t in Temperatures: #temperature data
     worksheet.write(row,0, t)
     row +=1
 
 row=1
-for p in Pressures:
+for p in Pressures: #pressure data
     worksheet.write(0,1, "Pressure (Pa)")
     worksheet.write(row,1, p)
     row +=1
 
-col=len(species_present)+3
-for name in species_present:
-    worksheet.write(0,col, 'PP'+name[7:])
+col=len(species_list)+3 #labels columns to contain partial pressure data for each species
+for name in species_list:
+    worksheet.write(0,col,name[12:-1]+'_pp')
     col +=1
 
 col=2
-for name in species_present:
-    worksheet.write(0,col, name[6:])
+for name in species_list: #labels columns to contain mole fraction data for each species
+    worksheet.write(0,col, name[6:] + " mole fraction")
     col+=1
     
 col=2
 row=1
-for key1 in moles_floats:
+for key1 in moles_floats: #populates columns with mol fraction data for each species
     row=1
     for m in moles_floats[key1]:
         worksheet.write(row,col,m)
         row +=1
     col +=1
 
-col=len(species_present)+3
+col=len(species_list)+3
 row=1
-for key in pp:
+for key in pp: #populates columns with partial pressure data for each species
     row=1
     
     for val in pp[key]:
@@ -240,4 +268,11 @@ for key in pp:
         row +=1
     col +=1
 
+worksheet.write(0,2*num_species+3, "Ptot") #populates column with total pressure data
+col=2*num_species+3
+row=1
+for p in ptot:
+    worksheet.write(row,col,p)
+    row +=1
+    
 workbook.close()
