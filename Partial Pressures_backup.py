@@ -2,28 +2,29 @@
 """
 Created on Fri Oct 13 14:52:51 2017
 
-@author: Kate
+@author: Kate Adkison
 """
 import re
 PO2="$\mathregular{10^{-4}}$ Pa"
 start_temp='7.0000000000E+02'
-#end_temp='2900'
-element="TH-O" #enter 1 or 2 letter element in all CAPS
+#end_temp='3000'
+element="BE-O" #enter 1 or 2 letter element in all CAPS
+tit='BE1O1_S'
 xfilename=element+"-acro2=1e-9-all"
 ps=element+"-acro2=1e-9-pp.ps"
 pdf=element+"-acro2=1e-9-pp.pdf"
 png=element+"-acro2=1e-9-pp.png"
-my_file=open(element+"-acro2=1e-9-gas-all.txt",'r')
-my_filep=open(element+"-acro2=1e-9-p-all.txt",'r') #opens txt file containing T and P data
+my_file=open(element+"-acro2=1e-9-gas-allex.txt",'r')
+my_filep=open(element+"-acro2=1e-9-p-allex.txt",'r') #opens txt file containing T and P data
 textp=my_filep.read() #temp data comes separated by words. Goal is to make one contiguous list of temp from 700-1800 K containing only numerical data
 
 blocksp=re.split("PLOTTED COLUMNS ARE :", textp) #splits txt file after every instance of this string
 blocksp=blocksp[1:len(blocksp)] #discards first lines of text that are superfluous 
 
-source=re.split("1:", textp)
-source=re.split("CLIP ON", source[1])
-source=re.split("GAS",source[0])
-source=source[1][0:-1]
+#source=re.split("1:", textp)
+#source=re.split("CLIP ON", source[1])
+#source=re.split("GAS",source[0])
+#source=source[1][0:-1]
 
 tp_blocks=[];
 index_start=blocksp[0].find(start_temp) #finds where the numbers start in the txt and marks as start index
@@ -168,26 +169,27 @@ num_plots = num_species
 #plt.gca().set_prop_cycle(plt.cycler('color', plt.cm.gist_ncar(np.linspace(0, .95, num_plots))))
 #linecycler=cycle(['-','-.'])
 #tab10, nipy_spectral, gist_ncar, tab20, Paired, jet
-position=species_list.index("T and Y(GAS,O2)") #finds the index of data that contains O2 data points so they can be ommitted during plotting
+species_list_copy=species_list[:]
+position=species_list_copy.index("T and Y(GAS,O2)") #finds the index of data that contains O2 data points so they can be ommitted during plotting
+del species_list_copy[position]
+position2=species_list_copy.index("T and Y(GAS,O3)")
+del species_list_copy[position2]
 
-if num_species>10:
-    for n in range(0,position):
-        plt.plot(temperatures_moles[str(n)], pp[str(n)],label=species_list[n][12:-1]+'_pp') #, next(linecycler)
-        species_present.append(species_list[n]) #makes a list of species present to use in legend
-    for n in range(position+1,11):
-        plt.plot(temperatures_moles[str(n)], pp[str(n)],label=species_list[n][12:-1]+'_pp') #, next(linecycler)
-        species_present.append(species_list[n]) #makes a list of species present to use in legend
-    for n in range(11,num_species):
-        plt.plot(temperatures_moles[str(n)], pp[str(n)],linestyle='-.',label=species_list[n][12:-1]+'_pp') #, next(linecycler)
-        species_present.append(species_list[n]) #makes a list of species present to use in legend
+
+
+if num_species-2>10:
+    for n in range(0,10):
+        plt.plot(temperatures_moles[str(n)], pp[str(n)],label=species_list_copy[n][12:-1]+'_pp') #, next(linecycler)
+        species_present.append(species_list_copy[n]) #makes a list of species present to use in legend
+
+    for n in range(11,num_species-2):
+        plt.plot(temperatures_moles[str(n)], pp[str(n)],linestyle='-.',label=species_list_copy[n][12:-1]+'_pp') #, next(linecycler)
+        species_present.append(species_list_copy[n]) #makes a list of species present to use in legend
 else:
-    for n in range(0,position):
-        plt.plot(temperatures_moles[str(n)], pp[str(n)],label=species_list[n][12:-1]+'_pp') #, next(linecycler)
-        species_present.append(species_list[n]) #makes a list of species present to use in legend
-    for n in range(position+1,num_species):
-        plt.plot(temperatures_moles[str(n)], pp[str(n)],label=species_list[n][12:-1]+'_pp') #, next(linecycler)
-        species_present.append(species_list[n]) #makes a list of species present to use in legend
-       
+    for n in range(0,num_species-2):
+        plt.plot(temperatures_moles[str(n)], pp[str(n)],label=species_list_copy[n][12:-1]+'_pp') #, next(linecycler)
+        species_present.append(species_list_copy[n]) #makes a list of species present to use in legend
+    
 
 plt.ylim((1e-10,1e5))
 plt.gca().margins(x=0)
@@ -198,7 +200,7 @@ plt.setp(legend.get_title(),fontsize=18)
 plt.yscale('log')   
 plt.xlabel('Temperature (K)',fontsize=18)
 plt.ylabel('Vapor Pressure (Pa)', fontsize=18)
-plt.title(source+' Source: Gas Species Partial Pressures', fontsize=18)
+plt.title(tit+' Source: Gas Species Partial Pressures', fontsize=18)
 textbox=plt.text(float(start_temp)+50,1.5e4, PO2 + " $O_2$", fontsize=18, color='black', bbox=dict(facecolor='white', edgecolor='k', alpha=.5))
 plt.tick_params(axis='both', labelsize=18)
 #minorLocator = MultipleLocator(5)
@@ -211,7 +213,7 @@ plt.show()
 plt.savefig(pdf)# bbox_inches='tight')
 plt.savefig(ps) 
 plt.savefig(png)
-
+species_list=species_list[0:num_species]
 print('Species:', species_list)
 
 
