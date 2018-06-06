@@ -1,4 +1,2 @@
 # Periodic-Table-Oxides
-Parses Thermo-Calc Output text files
-Plot partial pressures for oxides
-saves data to excel workbook
+Parses Thermo-Calc Output text files, plots partial pressures of gas species in gas phase, saves data to excel workbook
